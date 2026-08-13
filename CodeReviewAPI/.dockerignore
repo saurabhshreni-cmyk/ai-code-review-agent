@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+.idea/
+
+# Secrets
+groq_key.txt
+github_token.txt
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

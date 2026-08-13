@@ -1,0 +1,24 @@
+# .NET build outputs
+bin/
+obj/
+*.user
+.vs/
+*.suo
+.idea/
+
+# Secrets — never push these
+groq_key.txt
+github_token.txt
+**/groq_key.txt
+**/github_token.txt
+
+# Logs and reports
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+RepoReviewAgent/*.md
+CodeReviewAgent/
+RepoReviewAgent/
+UnifiedCodeReviewAgent/
