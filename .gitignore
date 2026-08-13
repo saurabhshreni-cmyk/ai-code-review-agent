@@ -6,19 +6,22 @@ obj/
 *.suo
 .idea/
 
-# Secrets — never push these
+# Old agent projects (kept locally, not needed in repo)
+CodeReviewAgent/
+RepoReviewAgent/
+UnifiedCodeReviewAgent/
+
+# Secrets — never commit these
 groq_key.txt
 github_token.txt
 **/groq_key.txt
 **/github_token.txt
 
-# Logs and reports
-*.log
+# Reports saved by REPORTS_DIR
+reports/
+*.md
+!README.md
 
 # OS
 .DS_Store
 Thumbs.db
-RepoReviewAgent/*.md
-CodeReviewAgent/
-RepoReviewAgent/
-UnifiedCodeReviewAgent/
