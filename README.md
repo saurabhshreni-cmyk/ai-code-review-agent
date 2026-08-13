@@ -4,14 +4,14 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit-brightgreen)](LIVE_URL_HERE)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit-brightgreen)](https://ai-code-review-agent-production-5a51.up.railway.app)
 [![Build & Verify](https://github.com/saurabhshreni/csharp-code-review-agent/actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
 
 ---
 
 ## Live Demo
 
-**[→ Open the live app](LIVE_URL_HERE)**
+**[→ Open the live app](https://ai-code-review-agent-production-5a51.up.railway.app)**
 
 The demo is fully functional. Paste any code snippet or point it at a public GitHub file and five AI specialists will review it in parallel, returning a scored report in seconds.
 
