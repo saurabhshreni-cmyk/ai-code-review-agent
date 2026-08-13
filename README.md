@@ -1,262 +1,313 @@
 # AI Code Review Agent
 
-> Multi-agent AI pipeline that reviews code, pull requests, and technical debt in parallel — built on .NET 10, Microsoft.Extensions.AI, Groq (LLaMA 3.3 70B), and Ollama.
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20App-brightgreen?logo=railway&logoColor=white)](https://ai-code-review-agent-production-5a51.up.railway.app) [![Build & Verify](https://github.com/saurabhshreni-cmyk/ai-code-review-agent/actions/workflows/build.yml/badge.svg)](https://github.com/saurabhshreni-cmyk/ai-code-review-agent/actions/workflows/build.yml) [![Deployed on Railway](https://img.shields.io/badge/Deployed%20on-Railway-7B2FBE?logo=railway&logoColor=white)](https://ai-code-review-agent-production-5a51.up.railway.app)
 
-[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit-brightgreen)](https://ai-code-review-agent-production-5a51.up.railway.app)
-[![Build & Verify](https://github.com/saurabhshreni/csharp-code-review-agent/actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
+**Multi-agent AI system that fans out 5 specialist reviewers in parallel to analyze code, pull requests, and entire repositories — built with Microsoft.Extensions.AI on ASP.NET Core, deployable as a single binary.**
 
 ---
 
-## Live Demo
+## 🚀 Live Demo
 
-**[→ Open the live app](https://ai-code-review-agent-production-5a51.up.railway.app)**
-
-The demo is fully functional. Paste any code snippet or point it at a public GitHub file and five AI specialists will review it in parallel, returning a scored report in seconds.
+> **[https://ai-code-review-agent-production-5a51.up.railway.app](https://ai-code-review-agent-production-5a51.up.railway.app)**
+>
+> Paste any code snippet or point it at a public GitHub file or PR — five AI specialists analyze it in parallel and return a scored, line-annotated report in seconds. No sign-up required.
 
 ---
 
-## What it does
+## Demo
 
-This project ships a single-binary .NET 10 web API that orchestrates multiple AI agents to review source code concurrently. Each request fans out to a pool of specialist agents — bug detectors, security auditors, code explainers, fix suggesters — whose findings are then synthesized by a supervisor agent into a unified scored report. The frontend (a single self-contained `index.html`) renders results with line-number annotations, diff-style fix blocks, and an interactive chat panel so you can ask follow-up questions about any reviewed file.
+![Demo](demo.gif)
+
+*Code review in action — 5 agents run in parallel, results appear with line-level findings and copyable fixes*
 
 ---
 
 ## Features
 
-| Feature | Detail |
-|---|---|
-| **Parallel agent execution** | All specialist agents run concurrently via `Task.WhenAll`, not sequentially |
-| **Dual LLM providers** | Groq (`llama-3.3-70b-versatile`) for cloud speed; Ollama (`qwen2.5:3b`) for local/offline use |
-| **Code Review mode** | Paste code, provide a GitHub file URL, or give a local path — 5 agents + supervisor |
-| **PR Review mode** | Point at any GitHub PR URL; fetches diffs and reviews each changed file individually |
-| **Repo Review mode** | Load a GitHub repository, pick files from the auto-ranked list, review in batch |
-| **Modernization Advisor** | 4 debt/architecture specialists produce a 3-priority actionable roadmap (Fix Now / Fix Soon / Fix Later) |
-| **Interactive chat** | After any review, ask follow-up questions about the file in a multi-turn chat panel |
-| **Review history** | All past reviews are stored in `localStorage` and viewable in the History tab |
-| **Markdown reports** | Every review is saved as a `.md` file to `REPORTS_DIR` (Desktop by default) |
-| **Line-level findings** | Every agent references exact line numbers; clicking a finding scrolls the code pane to that line |
-| **Diff viewer** | PR review mode renders added/removed lines in colour inside the code pane |
-| **Recommended Fixes panel** | The Fix Suggester's output is rendered as diff-style before/after blocks with a Copy button |
-| **Score circle** | Supervisor assigns a 1–10 score; animated circle turns green/amber/red accordingly |
-| **GitHub token support** | Optional PAT raises the GitHub API rate limit from 60 to 5,000 req/hr |
-| **Docker-ready** | Multi-stage Dockerfile targets `aspnet:10.0`; `PORT` and `REPORTS_DIR` are env-configurable |
-
----
-
-## Agents
-
-### Code Review (`POST /api/review`) — 5 agents + supervisor
-
-| Agent | Emoji | Role |
+| | Feature | Detail |
 |---|---|---|
-| Bug Detector | 🐛 | Finds logic errors, null-reference risks, off-by-one errors, and runtime exceptions — with exact line numbers |
-| Security Checker | 🔒 | Audits for hardcoded credentials, injection vectors, CSRF gaps, and OWASP Top 10 issues |
-| Code Explainer | 📖 | Explains what the file does in plain English, broken down by key sections and line ranges |
-| Fix Suggester | 🔧 | Produces diff-style before/after snippets for every issue it finds, pinned to exact lines |
-| Onboarding Assistant | 🚀 | Writes an onboarding summary, identifies the best entry point, flags gotchas, and lists dependencies |
-| **Supervisor** | — | Combines all five findings into a single report with a SUMMARY, KEY BUGS, SECURITY STATUS, TOP IMPROVEMENTS, WHAT THIS CODE DOES, and a SCORE out of 10 |
-
-### PR Review (`POST /api/review-pr-file`) — 5 agents + supervisor
-
-| Agent | Emoji | Role |
-|---|---|---|
-| Bug Detector | 🐛 | Hunts bugs in the diff — added lines only, with exact line numbers from the unified diff |
-| Security Checker | 🔒 | Security-audits the changeset; flags new attack surface introduced by the PR |
-| Change Explainer | 📖 | Describes what changed in plain English, listing key addition and deletion ranges |
-| Fix Suggester | 🔧 | Suggests diff-style fixes for issues in the added code |
-| Review Verdict | 🚀 | Issues APPROVE / REQUEST CHANGES / NEEDS DISCUSSION with a MUST FIX list and a score |
-| **Supervisor** | — | Synthesises all five into a PR REVIEW report with VERDICT, SUMMARY, KEY BUGS, SECURITY STATUS, WHAT CHANGED, MUST FIX, and SCORE |
-
-### Modernization Advisor (`POST /api/modernize`) — 4 agents + supervisor
-
-| Agent | Role |
-|---|---|
-| TechDebtAnalyzer | Identifies technical debt, code smells, overly complex logic, and shortcuts with future maintenance risk |
-| DuplicateCodeDetector | Finds copy-paste patterns, repeated logic blocks, and DRY principle violations |
-| FrameworkVersionChecker | Flags outdated libraries, deprecated APIs, old language patterns, and their modern replacements |
-| ArchitectureReviewer | Spots god classes, poor separation of concerns, tight coupling, missing abstractions, and circular dependencies |
-| **Supervisor** | Produces a 3-column prioritized roadmap: PRIORITY 1 – FIX NOW / PRIORITY 2 – FIX SOON / PRIORITY 3 – FIX LATER, each item tagged with the originating agent, effort estimate, and one-sentence business impact |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Runtime** | .NET 10 (ASP.NET Core minimal API) |
-| **AI abstraction** | `Microsoft.Extensions.AI` 9.5 |
-| **Groq client** | `Microsoft.Extensions.AI.OpenAI` (OpenAI-compatible endpoint) |
-| **Ollama client** | `Microsoft.Extensions.AI.Ollama` |
-| **Groq model** | `llama-3.3-70b-versatile` |
-| **Ollama model** | `qwen2.5:3b` |
-| **Frontend** | Vanilla JS + CSS (single `index.html`, zero build step, zero npm) |
-| **Fonts** | Inter (UI) + JetBrains Mono (code) via Google Fonts |
-| **GitHub integration** | GitHub REST API v3 (repos, pulls, contents) |
-| **Containerisation** | Docker (multi-stage, `mcr.microsoft.com/dotnet/aspnet:10.0`) |
-| **CI** | GitHub Actions (`.github/workflows/build.yml`) |
+| ⚡ | **Parallel multi-agent execution** | All specialist agents run concurrently via `Task.WhenAll` — total latency = slowest single agent + one supervisor call, not the sum |
+| 🧠 | **5 specialist agents per review + supervisor** | Bug Detector, Security Checker, Code Explainer, Fix Suggester, Onboarding Assistant — each with a structured output contract |
+| 🏗️ | **Modernization Advisor** | 4 dedicated agents (TechDebt, Duplication, Framework, Architecture) produce a 3-priority roadmap: Fix Now / Fix Soon / Fix Later |
+| 🔀 | **PR review with verdict** | Fetches unified diffs from GitHub, reviews file-by-file, returns APPROVE / REQUEST CHANGES / NEEDS DISCUSSION |
+| 📂 | **GitHub repo crawler** | Walks any public repo tree up to 10 directory levels, auto-ranks files by `main`, `app`, `controller`, `service`, etc. |
+| 🔧 | **Recommended Fixes panel** | Fix Suggester output rendered as diff-style `+`/`-` blocks per line reference, with a Copy All button |
+| 💬 | **Chat with your code** | Multi-turn, context-aware Q&A backed by the same LLM — up to 10 turns, system prompt includes the full reviewed source |
+| 🕐 | **Review history** | All reviews persisted in `localStorage` with score, verdict, provider, timestamp, and chat transcript |
+| 📊 | **Multi-file session summary** | After a batch repo or PR review, shows average score, total findings by severity, best/worst file callouts, and a comparison table |
+| 🔄 | **Dual LLM support** | Switch between Groq cloud (`llama-3.3-70b-versatile`) and local Ollama (`qwen2.5:3b`) from the sidebar — no restart needed |
+| 📝 | **Markdown report export** | Every review saved as a `.md` file; in-browser Download button creates a self-contained report with agent outputs + chat transcript |
+| 🐳 | **Docker + Railway ready** | Multi-stage Dockerfile, `PORT` and `REPORTS_DIR` env vars, deployed to Railway with a single push |
 
 ---
 
 ## Architecture
 
 ```
-Browser (index.html)
-       │
-       │  HTTP POST { provider, mode, input }
-       ▼
-┌─────────────────────────────────────────────────────┐
-│  ASP.NET Core Minimal API  (Program.cs)             │
-│                                                     │
-│  /api/review          /api/modernize   /api/review- │
-│       │                    │           pr-file      │
-│       ▼                    ▼               │        │
-│  ┌──────────┐        ┌──────────┐          │        │
-│  │  Agent 1 │        │  Agent 1 │          ▼        │
-│  │  Agent 2 │        │  Agent 2 │    ┌──────────┐   │
-│  │  Agent 3 │──WhenAll  Agent 3 │──WhenAll       │   │
-│  │  Agent 4 │        │  Agent 4 │    │  5 agents│   │
-│  │  Agent 5 │        └──────────┘    └──────────┘   │
-│  └────┬─────┘              │               │        │
-│       │                    │               │        │
-│       ▼                    ▼               ▼        │
-│  Supervisor LLM call  Supervisor LLM  Supervisor    │
-│  (combine + score)    (roadmap)       (PR verdict)  │
-└─────────────────────────────────────────────────────┘
-       │                         │
-       ├── IChatClient (Groq)    │
-       └── IChatClient (Ollama) ─┘
-              BuildClientAsync("groq" | "ollama")
+┌──────────────────────────────────────────────────────────────────┐
+│  Browser  (index.html — vanilla JS + CSS, zero npm, zero build)  │
+│                                                                    │
+│  Sidebar: [Code Review] [Repo Review] [PR Review]                 │
+│           [Modernization] [History]    Provider: [Groq] [Ollama]  │
+└─────────────────────────┬────────────────────────────────────────┘
+                           │  HTTP POST / GET  (same origin)
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  ASP.NET Core Minimal API  ·  Program.cs  ·  .NET 10             │
+│                                                                    │
+│   GET  /api/health          GET  /api/models                      │
+│   GET  /api/pr-info         GET  /api/repo-files                  │
+│   POST /api/chat            POST /api/review                      │
+│   POST /api/review-pr-file  POST /api/modernize                   │
+│                                                                    │
+│  ┌─────────────── /api/review ──────────────────────────────┐    │
+│  │  Task.WhenAll([                                           │    │
+│  │    🐛 Bug Detector      → line-referenced bug list       │    │
+│  │    🔒 Security Checker  → OWASP / credential scan        │    │
+│  │    📖 Code Explainer    → purpose + key sections         │    │
+│  │    🔧 Fix Suggester     → diff-style before/after pairs  │    │
+│  │    🚀 Onboarding Asst.  → entry point + gotchas          │    │
+│  │  ])                                                       │    │
+│  │  → Supervisor call → SUMMARY · KEY BUGS · SCORE/10       │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                                                                    │
+│  ┌─────────────── /api/review-pr-file ──────────────────────┐    │
+│  │  Task.WhenAll([                                           │    │
+│  │    🐛 Bug Detector      → diff-aware bug scan            │    │
+│  │    🔒 Security Checker  → new attack surface check       │    │
+│  │    📖 Change Explainer  → what changed + impact          │    │
+│  │    🔧 Fix Suggester     → fixes for added lines only     │    │
+│  │    🚀 Review Verdict    → APPROVE / REQUEST / DISCUSS    │    │
+│  │  ])                                                       │    │
+│  │  → Supervisor call → VERDICT · MUST FIX · SCORE/10       │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                                                                    │
+│  ┌─────────────── /api/modernize ───────────────────────────┐    │
+│  │  Task.WhenAll([                                           │    │
+│  │    TechDebtAnalyzer       → debt + code smells           │    │
+│  │    DuplicateCodeDetector  → DRY violations               │    │
+│  │    FrameworkVersionChecker→ deprecated APIs + upgrades   │    │
+│  │    ArchitectureReviewer   → coupling + god classes       │    │
+│  │  ])                                                       │    │
+│  │  → Supervisor call → 3-priority roadmap (Now/Soon/Later) │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                                                                    │
+│  BuildClientAsync("groq" | "ollama")                              │
+│     ├─ Groq:   OpenAIClient → llama-3.3-70b-versatile            │
+│     └─ Ollama: OllamaChatClient → qwen2.5:3b                     │
+│                    (warmed at startup via background Task)         │
+└─────────────────────────┬────────────────────────────────────────┘
+                           │
+              ┌────────────┴───────────┐
+              ▼                        ▼
+   Groq API                    Ollama (localhost:11434)
+   api.groq.com/openai/v1      IChatClient abstraction
+   (Microsoft.Extensions.AI.OpenAI)   (Microsoft.Extensions.AI.Ollama)
+              │
+              └──→ Report saved to REPORTS_DIR as .md
+                   (Desktop locally · /reports in Docker)
 ```
 
-The key design: **all specialist agents for a single review run concurrently** (`Task.WhenAll`). The supervisor call runs after all agents complete, so total latency ≈ slowest single agent + one supervisor call, not the sum of all agents.
-
 ---
 
-## API Endpoints
+## Agents
 
-| Method | Route | Query / Body | Description |
+### Code Review — 5 parallel agents + supervisor (`POST /api/review`)
+
+| Agent | Emoji | Role | Output format |
 |---|---|---|---|
-| `GET` | `/api/health` | — | Liveness check — returns `"AI Code Review API is running!"` |
-| `GET` | `/api/models` | — | Returns configured model names: `{ groq, ollama }` |
-| `GET` | `/api/pr-info` | `?prUrl=` | Fetches PR title, author, state, and list of changed code files from GitHub |
-| `GET` | `/api/repo-files` | `?repoUrl=` | Walks a repo's file tree and returns ranked code files with download URLs |
-| `POST` | `/api/review` | `{ provider, mode, input, fileName }` | Runs 5-agent code review + supervisor; returns score, report, fixedCode, agentOutputs |
-| `POST` | `/api/review-pr-file` | `{ provider, prUrl, fileName, patch }` | Runs 5-agent PR diff review + supervisor; returns verdict, score, report |
-| `POST` | `/api/modernize` | `{ provider, mode, input, fileName }` | Runs 4-agent modernization analysis + supervisor; returns 3-priority roadmap |
-| `POST` | `/api/chat` | `{ provider, systemPrompt, messages[] }` | Multi-turn chat about a reviewed file; appends to a running conversation |
+| Bug Detector | 🐛 | Finds logic errors, null-reference risks, off-by-one errors, and runtime exceptions | `Line [N]: bug — why` · SEVERITY · MOST CRITICAL LINE |
+| Security Checker | 🔒 | Audits for hardcoded credentials, injection vectors, CSRF gaps, and OWASP Top 10 | `Line [N]: type — risk` · RISK LEVEL · MOST CRITICAL LINE |
+| Code Explainer | 📖 | Explains purpose in plain English, broken down by key line ranges | PURPOSE · LANGUAGE · KEY SECTIONS · HOW IT WORKS |
+| Fix Suggester | 🔧 | Produces diff-style `- old / + new` snippets for every issue, pinned to exact lines | `Line [N]: explanation` + ` ```lang ... ``` ` fenced block |
+| Onboarding Assistant | 🚀 | Writes an onboarding summary, identifies the best entry point, flags gotchas, lists dependencies | ONBOARDING SUMMARY · START READING HERE · WATCH OUT FOR · DEPENDENCIES |
+| **Supervisor** | — | Synthesises all five reports into a single scored review | SUMMARY · KEY BUGS · SECURITY STATUS · TOP IMPROVEMENTS · WHAT THIS CODE DOES · SCORE X/10 |
 
-All endpoints accept `provider: "groq"` (default) or `provider: "ollama"`.
+### PR Review — 5 PR-specific agents + supervisor (`POST /api/review-pr-file`)
 
-Input modes for `/api/review` and `/api/modernize`:
+| Agent | Emoji | Role | Output format |
+|---|---|---|---|
+| Bug Detector | 🐛 | Hunts bugs introduced by the diff — added lines only, references unified diff line numbers | `Line [N]: bug — why` · SEVERITY · MOST CRITICAL LINE |
+| Security Checker | 🔒 | Audits new attack surface introduced by the changeset | `Line [N]: vulnerability — risk` · RISK LEVEL |
+| Change Explainer | 📖 | Describes what changed in plain English, lists key addition and deletion ranges | WHAT CHANGED · KEY CHANGES · IMPACT |
+| Fix Suggester | 🔧 | Suggests diff-style fixes for issues in the added code | `Line [N]: explanation` + fenced diff block |
+| Review Verdict | 🚀 | Issues a final recommendation with a must-fix list | VERDICT: APPROVE / REQUEST CHANGES / NEEDS DISCUSSION · MUST FIX BEFORE MERGE · NICE TO HAVE · SCORE |
+| **Supervisor** | — | Synthesises all five into a complete PR review | PR REVIEW · VERDICT · SUMMARY · KEY BUGS · SECURITY STATUS · WHAT CHANGED · MUST FIX · SCORE X/10 |
 
-| Mode | `mode` value | `input` value |
+### Modernization Advisor — 4 parallel agents + supervisor (`POST /api/modernize`)
+
+| Agent | Role | Output format |
 |---|---|---|
-| Paste code | `"paste"` | Raw source code string |
-| GitHub file URL | `"github-file"` | `https://github.com/owner/repo/blob/main/file.py` |
-| Local file path | `"local-file"` | Absolute path on the server's filesystem |
+| TechDebtAnalyzer | Identifies technical debt, code smells, overly complex logic, and shortcuts with future maintenance risk | `Line [N]: issue` · actionable recommendations |
+| DuplicateCodeDetector | Finds copy-paste patterns, repeated logic blocks, and DRY principle violations with consolidation suggestions | `Line [N]: duplication` · how to consolidate |
+| FrameworkVersionChecker | Flags outdated libraries, deprecated APIs, old language patterns, and identifies modern replacements | `Line [N]: legacy approach` · modern equivalent |
+| ArchitectureReviewer | Spots god classes, poor separation of concerns, tight coupling, missing abstractions, and circular dependencies | `Line [N]: structural issue` · architectural fix |
+| **Supervisor** | Produces a 3-column prioritized roadmap with effort and business impact per item | PRIORITY 1 – FIX NOW · PRIORITY 2 – FIX SOON · PRIORITY 3 – FIX LATER; each item: Issue · Flagged by · Effort (Low/Medium/High) · Business impact |
 
 ---
 
-## Running Locally
+## Tech Stack
+
+| Technology | Version | Purpose |
+|---|---|---|
+| .NET | 10.0 | Runtime and SDK |
+| ASP.NET Core | 10.0 | Minimal API host — `MapGet`/`MapPost`, static files, `UseDefaultFiles` |
+| Microsoft.Extensions.AI | 9.5.0 | Provider-agnostic `IChatClient` abstraction |
+| Microsoft.Extensions.AI.OpenAI | 9.6.0-preview | Groq via OpenAI-compatible endpoint (`https://api.groq.com/openai/v1`) |
+| Microsoft.Extensions.AI.Ollama | 9.6.0-preview | Local inference via `OllamaChatClient` |
+| Groq LLM | `llama-3.3-70b-versatile` | Primary cloud model — fast, highly capable |
+| Ollama LLM | `qwen2.5:3b` | Local/offline model — warmed at startup |
+| Frontend | Vanilla JS + CSS | Single `index.html`, zero build step, zero npm dependencies |
+| Fonts | Inter + JetBrains Mono | Google Fonts — UI text and monospace code panes |
+| GitHub REST API | v3 | Repo tree crawling, PR metadata + diffs, raw file fetching |
+| Docker | Multi-stage | `mcr.microsoft.com/dotnet/aspnet:10.0` final image |
+| Railway | — | Cloud deployment — reads root `Dockerfile`, binds `PORT=8080` |
+| GitHub Actions | — | CI: restore → build Release → verify output |
+| localStorage | — | Client-side history — up to 50 entries, survives page refresh |
+
+---
+
+## API Reference
+
+| Method | Route | Auth Required | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | No | Liveness probe — returns `"AI Code Review API is running!"` |
+| `GET` | `/api/models` | No | Returns active model names: `{ groq: "llama-3.3-70b-versatile", ollama: "qwen2.5:3b" }` |
+| `GET` | `/api/pr-info?prUrl=` | Optional PAT | Fetches PR title, author, state, and filtered list of changed code files |
+| `GET` | `/api/repo-files?repoUrl=` | Optional PAT | BFS walks repo tree (≤10 pages), returns all code files + ranked recommendations |
+| `POST` | `/api/review` | No | 5-agent code review + supervisor; body: `{ provider, mode, input, fileName }` |
+| `POST` | `/api/review-pr-file` | No | 5-agent PR diff review + supervisor; body: `{ provider, prUrl, fileName, patch }` |
+| `POST` | `/api/modernize` | No | 4-agent modernization analysis + supervisor; body: `{ provider, mode, input, fileName }` |
+| `POST` | `/api/chat` | No | Multi-turn follow-up Q&A; body: `{ provider, systemPrompt, messages: [{role, content}] }` |
+
+**Input modes** for `/api/review` and `/api/modernize`:
+
+| `mode` | `input` | Notes |
+|---|---|---|
+| `"paste"` | Raw source code string | `fileName` used for context |
+| `"github-file"` | `https://github.com/owner/repo/blob/main/file.py` | Rewritten to `raw.githubusercontent.com` internally |
+| `"local-file"` | Absolute path on the server | Blocked with a helpful message in the hosted version |
+
+All endpoints accept `provider: "groq"` (default) or `provider: "ollama"`. The `ReviewRequest` record also accepts legacy aliases `inputType`/`content` in place of `mode`/`input`.
+
+**Code file extensions** recognised across all endpoints: `.cs` `.py` `.js` `.ts` `.java` `.cpp` `.c` `.go` `.rb` `.php` `.swift` `.kt` `.rs`
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A [Groq API key](https://console.groq.com/) **or** [Ollama](https://ollama.ai/) running locally
+- A free [Groq API key](https://console.groq.com/) **or** [Ollama](https://ollama.ai/) running locally with `qwen2.5:3b` pulled
 - Git
 
-### 1. Clone
+### Quick Start
 
 ```bash
-git clone https://github.com/saurabhshreni/csharp-code-review-agent.git
-cd csharp-code-review-agent
-```
+# 1. Clone
+git clone https://github.com/saurabhshreni-cmyk/ai-code-review-agent.git
+cd ai-code-review-agent
 
-### 2. Set your Groq API key
+# 2. Set your Groq API key (Linux / macOS)
+export GROQ_API_KEY=gsk_your_key_here
 
-**Option A — Environment variable (recommended):**
+# Windows PowerShell
+$env:GROQ_API_KEY = "gsk_your_key_here"
 
-```bash
-# Linux / macOS
-export GROQ_API_KEY=your_key_here
-
-# Windows (PowerShell)
-$env:GROQ_API_KEY = "your_key_here"
-```
-
-**Option B — Desktop file (for quick local testing):**
-
-Create `%USERPROFILE%\Desktop\groq_key.txt` and paste your key as the only line.
-
-### 3. (Optional) GitHub token
-
-To avoid GitHub's 60 req/hr unauthenticated rate limit when reviewing repos or PRs, create a Personal Access Token with `repo:read` scope and:
-
-```bash
-# Linux / macOS
+# 3. (Optional) Set a GitHub Personal Access Token for repo/PR features
+#    Without this, GitHub's unauthenticated limit is 60 req/hr
 export GITHUB_TOKEN=ghp_your_token_here
 
-# Windows (PowerShell)
-$env:GITHUB_TOKEN = "ghp_your_token_here"
-```
-
-Or write it to `%USERPROFILE%\Desktop\github_token.txt`.
-
-### 4. (Optional) Local Ollama model
-
-```bash
-ollama pull qwen2.5:3b
-```
-
-The app warms the model at startup. Select "Ollama" in the sidebar to use it.
-
-### 5. Run
-
-```bash
+# 4. Run
 dotnet run --project CodeReviewAPI/CodeReviewAPI.csproj
 ```
 
-The app starts on `http://localhost:5161` and opens your browser automatically after 1.5 seconds.
+The API starts on `http://localhost:5161` and opens your browser automatically after 1.5 seconds.
 
-### Running with Docker
+**Alternative key delivery (local testing only):** create `Desktop/groq_key.txt` and paste your key as the only line. Same for `Desktop/github_token.txt`. The server reads these as fallbacks if the environment variables are absent.
+
+### Local Ollama
 
 ```bash
-docker build -t code-review-agent CodeReviewAPI/
+# Pull the model once
+ollama pull qwen2.5:3b
+
+# Run the app — Ollama is warmed at startup automatically
+dotnet run --project CodeReviewAPI/CodeReviewAPI.csproj
+```
+
+Select **Ollama** in the sidebar to switch providers without restarting.
+
+### Docker
+
+```bash
+# Build from the repo root (uses the root Dockerfile)
+docker build -t code-review-agent .
+
+# Run
 docker run -p 8080:8080 \
-  -e GROQ_API_KEY=your_key_here \
+  -e GROQ_API_KEY=gsk_your_key_here \
+  -e GITHUB_TOKEN=ghp_your_token_here \
   -e REPORTS_DIR=/reports \
   -v $(pwd)/reports:/reports \
   code-review-agent
 ```
 
-Then open `http://localhost:8080`.
+Open **[http://localhost:8080](http://localhost:8080)**.
 
----
-
-## Environment Variables
+### Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `GROQ_API_KEY` | Yes (for Groq) | `null` | Groq API key. Falls back to `Desktop/groq_key.txt`. If unset, Groq requests throw at runtime — Ollama still works. |
-| `GITHUB_TOKEN` | No | `""` | GitHub Personal Access Token. Raises API rate limit from 60 to 5,000 req/hr. Falls back to `Desktop/github_token.txt`. |
-| `REPORTS_DIR` | No | User's Desktop | Directory where `.md` report files are written after each review. Set to a writable path in Docker (e.g. `/reports`). |
-| `PORT` | No | `5161` | HTTP port the server binds to. Dockerfile sets this to `8080`. |
+| `GROQ_API_KEY` | Yes (for Groq) | `null` | Groq API key. Falls back to `Desktop/groq_key.txt`. If unset, Groq requests throw at call time — Ollama still works. |
+| `GITHUB_TOKEN` | No | `""` | GitHub PAT with `repo:read`. Raises rate limit from 60 to 5,000 req/hr. Falls back to `Desktop/github_token.txt`. |
+| `REPORTS_DIR` | No | User's Desktop | Directory where `.md` report files are written after each review. Set to `/reports` or similar in Docker. |
+| `PORT` | No | `5161` | HTTP port the server binds to on `0.0.0.0`. Dockerfile sets `PORT=8080`. Railway injects this automatically. |
 
 ---
 
 ## Screenshots
 
-[Screenshots coming soon]
+### Code Review — agent cards with line-level findings
+*[Screenshot coming soon]*
+
+### Recommended Fixes — diff-style +/- blocks with Copy button
+*[Screenshot coming soon]*
+
+### Modernization Roadmap — 3-column Fix Now / Fix Soon / Fix Later
+*[Screenshot coming soon]*
+
+### Review History — scored card list with verdict badges
+*[Screenshot coming soon]*
 
 ---
 
 ## Internship Context
 
-This project was built as part of an internship at **HCLTech** during **June–August 2026**, under the **PE_Teams_Insight_FY24** programme.
+This project was built during an internship at **HCLTech** (June–August 2026) under the **PE_Teams_Insight_FY24** programme.
 
-The agent orchestration model is inspired by the **Microsoft Agent Framework** — specifically the pattern of spawning independent specialist agents in parallel and aggregating their structured outputs through a supervisor LLM call. The implementation uses `Microsoft.Extensions.AI` as the provider-agnostic abstraction layer, allowing the same orchestration logic to work identically against Groq's hosted API and a locally-running Ollama instance without any code changes.
+The project represents a full learning arc through the **Microsoft Agent Framework** model of agent orchestration:
+
+1. **Single agent** — one LLM call per review request
+2. **Sequential agents** — multiple calls chained one after another
+3. **Parallel agents** — `Task.WhenAll` across all specialists simultaneously, then a supervisor synthesises the results
+4. **Full web API** — parallel agent orchestration exposed through a production-grade ASP.NET Core minimal API, deployed on Railway, with a complete UI built in vanilla JavaScript
+
+The implementation uses `Microsoft.Extensions.AI` as the provider-agnostic `IChatClient` abstraction, allowing the same orchestration logic to drive both Groq's hosted API (via an OpenAI-compatible endpoint) and a locally-running Ollama instance without any code changes at the call site. The provider is resolved at request time via a single `BuildClientAsync("groq" | "ollama")` call, making the system fully swappable at runtime.
+
+The live deployment at **[https://ai-code-review-agent-production-5a51.up.railway.app](https://ai-code-review-agent-production-5a51.up.railway.app)** runs the full agent pipeline in the cloud.
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Commit using conventional commits: `feat:`, `fix:`, `docs:`, etc.
+4. Push and open a pull request against `main`
+
+Please ensure `dotnet build` passes before submitting. There are no runtime secrets committed to the repository — all keys are injected via environment variables.
 
 ---
 
@@ -266,4 +317,10 @@ The agent orchestration model is inspired by the **Microsoft Agent Framework** �
 
 ---
 
-*Built with .NET 10 · Microsoft.Extensions.AI · Groq · Ollama*
+<div align="center">
+
+Built with **Microsoft.Extensions.AI** + **Groq** · Deployed on **Railway** · HCLTech Internship 2026
+
+**[Open the live app →](https://ai-code-review-agent-production-5a51.up.railway.app)**
+
+</div>
