@@ -1,6 +1,6 @@
 # AI Code Review Agent
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-brightgreen?style=for-the-badge)](https://ai-code-review-agent-production-5a51.up.railway.app) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/) [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE) [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)](Dockerfile) [![Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=for-the-badge&logo=railway)](https://ai-code-review-agent-production-5a51.up.railway.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-brightgreen?style=for-the-badge)](https://ai-code-review-agent-boot.onrender.com) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/) [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE) [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)](Dockerfile) [![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?style=for-the-badge&logo=render)](https://ai-code-review-agent-boot.onrender.com)
 
 **Multi-agent AI system that fans out specialist reviewers in parallel using `Task.WhenAll` and the `IChatClient` abstraction from Microsoft.Extensions.AI — runs on Groq cloud or local Ollama, deployed as a single ASP.NET Core binary.**
 
@@ -8,9 +8,11 @@
 
 ## 🔗 Live Demo
 
-> **[https://ai-code-review-agent-production-5a51.up.railway.app](https://ai-code-review-agent-production-5a51.up.railway.app)**
+> **[https://ai-code-review-agent-boot.onrender.com](https://ai-code-review-agent-boot.onrender.com)**
 
 Paste any code snippet, drop in a GitHub file URL, or point it at a pull request — five AI specialist agents analyze it in parallel and return a scored, line-annotated report in seconds, no sign-up required.
+
+*Hosted on Render's free tier — the app sleeps after inactivity, so the first request may take up to a minute to wake up.*
 
 ---
 
@@ -68,8 +70,8 @@ Instead of making a single LLM call and hoping for a comprehensive answer, this 
   <td>Every review auto-saved as a <code>.md</code> file to <code>REPORTS_DIR</code>; in-browser Download button creates a self-contained report with all agent outputs</td>
 </tr>
 <tr>
-  <td><strong>🐳 Docker + Railway ready</strong></td>
-  <td>Multi-stage root <code>Dockerfile</code>, <code>PORT</code> and <code>REPORTS_DIR</code> env vars, deployed to Railway with a single push to <code>main</code></td>
+  <td><strong>🐳 Docker + Render ready</strong></td>
+  <td>Multi-stage root <code>Dockerfile</code>, <code>PORT</code> and <code>REPORTS_DIR</code> env vars, deployed to Render with a single push to <code>main</code></td>
 </tr>
 </table>
 
@@ -178,7 +180,7 @@ Instead of making a single LLM call and hoping for a comprehensive answer, this 
 | Fonts | Inter + JetBrains Mono | Google Fonts — UI text and monospace code/diff panes |
 | GitHub REST API | v3 | Repo tree BFS, PR metadata, unified diffs, raw file fetching |
 | Docker | Multi-stage | `mcr.microsoft.com/dotnet/aspnet:10.0` final image, `sdk:10.0` build stage |
-| Railway | — | Cloud deployment — reads root `Dockerfile`, injects `PORT=8080` |
+| Render | — | Cloud deployment — reads root `Dockerfile`, injects `PORT=8080` |
 | GitHub Actions | — | CI workflow: restore → build Release → verify binary output |
 | localStorage | — | Client-side review history — key `cra_history`, max 50 entries |
 
@@ -247,9 +249,9 @@ docker run -p 8080:8080 \
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GROQ_API_KEY` | Yes (for Groq) | `null` | Groq API key. Falls back to `Desktop/groq_key.txt`. If absent, Groq requests throw at call time — Ollama still works without it. |
-| `GITHUB_TOKEN` | No | `""` | GitHub PAT (`repo:read`). Raises API rate limit from 60 to 5,000 req/hr. Falls back to `Desktop/github_token.txt`. |
+| `GITHUB_TOKEN` | No | `""` | GitHub PAT (`repo:read`). Read from environment variable first; falls back to `Desktop/github_token.txt`. Raises rate limit from 60 to 5,000 req/hr. |
 | `REPORTS_DIR` | No | User's Desktop | Directory where `.md` report files are saved after each review. Set to `/tmp` or `/reports` in Docker. |
-| `PORT` | No | `5161` | Port the server binds to on `0.0.0.0`. Dockerfile sets `PORT=8080`; Railway injects this automatically. |
+| `PORT` | No | `5161` | Port the server binds to on `0.0.0.0`. Dockerfile sets `PORT=8080`; Render injects this automatically. |
 
 ---
 
@@ -267,7 +269,7 @@ docker run -p 8080:8080 \
 ### Review History
 ![History](screenshots/history.png)
 
-*Screenshots coming soon — [try the live demo](https://ai-code-review-agent-production-5a51.up.railway.app) instead*
+*Screenshots coming soon — [try the live demo](https://ai-code-review-agent-boot.onrender.com) instead*
 
 ---
 
