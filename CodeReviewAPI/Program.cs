@@ -25,7 +25,7 @@ var groqApiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY")
         ? File.ReadAllText(groqKeyPath).Trim()
         : null);
 
-const string GROQ_MODEL    = "llama-3.3-70b-versatile";
+const string GROQ_MODEL    = "openai/gpt-oss-120b";
 const string GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const string OLLAMA_URL    = "http://localhost:11434";
 const string OLLAMA_MODEL  = "qwen2.5:3b";
@@ -37,8 +37,13 @@ try { Directory.CreateDirectory(reportsDir); }
 catch { /* unwritable path — the per-report try/catch below handles the fallout */ }
 
 var tokenPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "github_token.txt");
-var GITHUB_TOKEN = File.Exists(tokenPath) ? File.ReadAllText(tokenPath).Trim() : "";
-if (!string.IsNullOrEmpty(GITHUB_TOKEN))
+var githubTokenEnv = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+var GITHUB_TOKEN = !string.IsNullOrEmpty(githubTokenEnv)
+    ? githubTokenEnv!
+    : (File.Exists(tokenPath) ? File.ReadAllText(tokenPath).Trim() : "");
+if (!string.IsNullOrEmpty(githubTokenEnv))
+    Console.WriteLine("GitHub token loaded from GITHUB_TOKEN environment variable");
+else if (!string.IsNullOrEmpty(GITHUB_TOKEN))
     Console.WriteLine("GitHub token loaded from Desktop/github_token.txt");
 else
     Console.WriteLine("No GitHub token found - using unauthenticated API (60 req/hr limit)");
