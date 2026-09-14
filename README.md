@@ -79,54 +79,59 @@ Instead of making a single LLM call and hoping for a comprehensive answer, this 
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    UI["🖥️ Browser<br/>index.html · vanilla JS<br/>zero npm · zero build"]
+    API["⚙️ ASP.NET Core Minimal API<br/>.NET 10 · Program.cs<br/>8 endpoints"]
+    FAN{{"⚡ Task.WhenAll<br/>parallel fan-out"}}
+
+    R1["🐛 Bug Detector"]
+    R2["🔒 Security Checker"]
+    R3["📖 Code / Change Explainer"]
+    R4["🔧 Fix Suggester"]
+    R5["🚀 Onboarding · Verdict"]
+
+    SUP["🧠 Supervisor<br/>synthesises all five"]
+    OUT["📄 Scored Report<br/>SCORE X/10 · VERDICT<br/>Markdown → REPORTS_DIR"]
+
+    PROV{{"BuildClientAsync(provider)<br/>→ IChatClient"}}
+    GROQ["☁️ Groq<br/>llama-3.3-70b-versatile"]
+    OLLA["💻 Ollama<br/>qwen2.5:3b"]
+
+    UI -->|"HTTP GET / POST"| API
+    API --> FAN
+    FAN --> R1 & R2 & R3 & R4 & R5 --> SUP
+    SUP --> OUT
+    FAN -.->|"every agent call"| PROV
+    PROV --> GROQ
+    PROV --> OLLA
+
+    classDef client fill:#1f6feb,stroke:#58a6ff,stroke-width:2px,color:#fff
+    classDef server fill:#238636,stroke:#3fb950,stroke-width:2px,color:#fff
+    classDef fan    fill:#9e6a03,stroke:#e3b341,stroke-width:2px,color:#fff
+    classDef agent  fill:#30363d,stroke:#8b949e,stroke-width:1px,color:#fff
+    classDef super  fill:#8957e5,stroke:#bc8cff,stroke-width:2px,color:#fff
+    classDef result fill:#0e7490,stroke:#22d3ee,stroke-width:2px,color:#fff
+    classDef model  fill:#6e2f8e,stroke:#d2a8ff,stroke-width:2px,color:#fff
+
+    class UI client
+    class API server
+    class FAN,PROV fan
+    class R1,R2,R3,R4,R5 agent
+    class SUP super
+    class OUT result
+    class GROQ,OLLA model
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Browser  (index.html — vanilla JS + CSS, zero npm, zero build) │
-│                                                                   │
-│  Sidebar modes: Code Review · Repo Review · PR Review            │
-│                 Modernization Advisor · Review History            │
-│  Provider toggle: [ Groq ]  [ Ollama ]                          │
-└──────────────────────────┬──────────────────────────────────────┘
-                            │  HTTP GET / POST  (same origin)
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  ASP.NET Core Minimal API  ·  Program.cs  ·  .NET 10            │
-│                                                                   │
-│  GET  /api/health          ←  liveness probe                     │
-│  GET  /api/models          ←  active model names                 │
-│  GET  /api/pr-info         ←  PR metadata + changed files        │
-│  GET  /api/repo-files      ←  BFS repo tree (≤10 pages)          │
-│  POST /api/review          ←  5-agent code review + supervisor   │
-│  POST /api/review-pr-file  ←  5-agent PR diff review + supervisor│
-│  POST /api/chat            ←  multi-turn Q&A (up to 10 turns)    │
-│  POST /api/modernize       ←  4-agent modernization + supervisor  │
-│                                                                   │
-│  ┌──────────── /api/review (and /api/review-pr-file) ─────────┐ │
-│  │                                                              │ │
-│  │  Task.WhenAll([                                             │ │
-│  │    🐛 Bug Detector      → line-referenced bug list         │ │
-│  │    🔒 Security Checker  → OWASP / credential scan          │ │
-│  │    📖 Code Explainer    → purpose + key line sections      │ │
-│  │    🔧 Fix Suggester     → diff-style before/after pairs    │ │
-│  │    🚀 Onboarding Asst / Review Verdict                     │ │
-│  │  ])                ↑ all five run concurrently              │ │
-│  │       ↓                                                     │ │
-│  │  Supervisor call → SUMMARY · KEY BUGS · SCORE X/10         │ │
-│  └──────────────────────────────────────────────────────────── ┘ │
-│                                                                   │
-│  ┌──────────── /api/modernize ─────────────────────────────────┐ │
-│  │  Task.WhenAll([                                              │ │
-│  │    TechDebtAnalyzer · DuplicateCodeDetector                 │ │
-│  │    FrameworkVersionChecker · ArchitectureReviewer           │ │
-│  │  ])                                                          │ │
-│  │  → Supervisor → PRIORITY 1 FIX NOW / 2 FIX SOON / 3 LATER │ │
-│  └──────────────────────────────────────────────────────────── ┘ │
-│                                                                   │
-│  BuildClientAsync("groq" | "ollama") → IChatClient               │
-│     ├─ "groq"   → OpenAIClient(GROQ_BASE_URL) → llama-3.3-70b   │
-│     └─ "ollama" → OllamaChatClient(localhost:11434) → qwen2.5:3b │
-└──────────────────────────────────────────────────────────────────┘
-```
+
+`/api/review` and `/api/review-pr-file` both run the five-agent shape above. `/api/modernize` runs the
+identical pipeline with four agents instead — TechDebtAnalyzer, DuplicateCodeDetector,
+FrameworkVersionChecker, ArchitectureReviewer — and its supervisor emits a three-tier
+FIX NOW / FIX SOON / FIX LATER roadmap rather than a score.
+
+**Why this shape matters:** every agent in the `Task.WhenAll` block issues its LLM call at the same
+moment, so wall-clock latency is the slowest single agent plus one supervisor call — not the sum of all
+of them. And because each agent is written against `IChatClient`, swapping Groq for Ollama changes only
+what `BuildClientAsync` returns; no agent ever learns which provider answered.
 
 ---
 
